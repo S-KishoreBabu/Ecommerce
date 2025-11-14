@@ -27,14 +27,16 @@ services:
     ports:
       - "9200:9200"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9200/ || exit 1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9200/_cluster/health?local=true || exit 1"]
       interval: 10s
       timeout: 5s
-      retries: 6
+      retries: 20
+      start_period: 30s
     ulimits:
       memlock:
         soft: -1
         hard: -1
+
 
   backend:
     build:

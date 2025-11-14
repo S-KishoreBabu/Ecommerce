@@ -8,7 +8,7 @@ RUN npm install -g pnpm
 COPY package.json pnpm-lock.yaml* ./
 
 # Install dependencies (pnpm)
-RUN pnpm install --frozen-lockfile --prefer-offline
+RUN pnpm install
 
 # Copy source
 COPY . .
