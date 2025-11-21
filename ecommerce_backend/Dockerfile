@@ -16,9 +16,12 @@ WORKDIR /app
 
 # Copy jar from builder stage (artifactId from pom: ecommerce_backend)
 COPY --from=builder /build/target/ecommerce_backend-0.0.1-SNAPSHOT.jar ./ecommerce_backend.jar
+# after setting WORKDIR /app
+COPY wait-for-it.sh /app/wait-for-it.sh
+RUN chmod +x /app/wait-for-it.sh
 
 EXPOSE 8080
 # Use JAVA_OPTS for memory tuning if needed
 ENV JAVA_OPTS=""
-
-CMD ["sh", "-c", "java $JAVA_OPTS -jar /app/ecommerce_backend.jar"]
+ENTRYPOINT ["/app/wait-for-it.sh"]
+CMD ["mysql","3306","--","java","-jar","/app/ecommerce_backend.jar"]

@@ -24,15 +24,19 @@ function Login() {
 
       const token = response.data.token;
 
-      // ✅ Save token in cookie instead of localStorage
+      // Save token in cookie
       Cookies.set("token", token, { expires: 1 }); // 1 day expiry
 
-      // ✅ update AuthContext (optional, if used elsewhere)
+      // Make axios include the token for future requests
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+
+      // update AuthContext
       login(token);
 
       setMessage("Login successful!");
       navigate("/dashboard");
     } catch (error) {
+      console.error("Login error:", error.response?.status, error.response?.data);
       setMessage("Invalid credentials. Please try again.");
     }
   };
