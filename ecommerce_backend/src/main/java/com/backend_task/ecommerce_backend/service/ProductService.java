@@ -21,7 +21,14 @@ public class ProductService {
     @Autowired
     private ProductSearchRepository productSearchRepository;
 
-    // ✅ Add a single product and index it in Elasticsearch (excluding category & ID)
+    // Helper: safely get category name (returns null if no category)
+    private String safeCategoryName(Product p) {
+        if (p == null) return null;
+        if (p.getCategory() == null) return null;
+        return p.getCategory().getName();
+    }
+
+    // ✅ Add a single product and index it in Elasticsearch (now includes categoryName)
     public Product addProduct(Product product) {
         Product savedProduct = productRepository.save(product);
 
@@ -32,11 +39,14 @@ public class ProductService {
         searchDoc.setDiscountedPrice(savedProduct.getDiscountedPrice());
         searchDoc.setQuantity(savedProduct.getQuantity());
 
+        // <-- NEW: set categoryName so ES can find products by category text
+        searchDoc.setCategoryName(safeCategoryName(savedProduct));
+
         productSearchRepository.save(searchDoc);
         return savedProduct;
     }
 
-    // ✅ Add multiple products and index them all
+    // ✅ Add multiple products and index them all (includes categoryName)
     public void addMultipleProducts(List<Product> products) {
         List<Product> savedProducts = productRepository.saveAll(products);
 
@@ -47,6 +57,10 @@ public class ProductService {
             ps.setMrp(p.getMrp());
             ps.setDiscountedPrice(p.getDiscountedPrice());
             ps.setQuantity(p.getQuantity());
+
+            // <-- NEW: include category name for each product
+            ps.setCategoryName(safeCategoryName(p));
+
             return ps;
         }).collect(Collectors.toList());
 
@@ -75,6 +89,10 @@ public class ProductService {
             ps.setMrp(p.getMrp());
             ps.setDiscountedPrice(p.getDiscountedPrice());
             ps.setQuantity(p.getQuantity());
+
+            // <-- NEW: include category name during reindex
+            ps.setCategoryName(safeCategoryName(p));
+
             return ps;
         }).collect(Collectors.toList());
 

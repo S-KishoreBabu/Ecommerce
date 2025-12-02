@@ -20,18 +20,19 @@ public class SearchController {
 
     @GetMapping("/search")
     public List<ProductSearch> searchProducts(@RequestParam String q) {
-        final String queryText = q.toLowerCase(); // ✅ use this instead of reassigning q
+        final String queryText = q.toLowerCase(); // use a lowercased copy
         var queryBuilder = NativeQuery.builder();
 
         try {
             if (queryText.contains("under")) {
                 double price = extractFirstNumber(queryText);
+                String productKeyword = extractProductKeyword(queryText, "under");
                 queryBuilder.withQuery(qb -> qb
                     .bool(b -> b
                         .must(m -> m
-                            .match(mt -> mt
-                                .field("name")
-                                .query(extractProductKeyword(queryText, "under"))
+                            .multiMatch(mm -> mm
+                                .fields("name", "categoryName")   // <-- search both fields
+                                .query(productKeyword)
                                 .fuzziness("AUTO")
                             )
                         )
@@ -46,12 +47,13 @@ public class SearchController {
 
             } else if (queryText.contains("above")) {
                 double price = extractFirstNumber(queryText);
+                String productKeyword = extractProductKeyword(queryText, "above");
                 queryBuilder.withQuery(qb -> qb
                     .bool(b -> b
                         .must(m -> m
-                            .match(mt -> mt
-                                .field("name")
-                                .query(extractProductKeyword(queryText, "above"))
+                            .multiMatch(mm -> mm
+                                .fields("name", "categoryName")
+                                .query(productKeyword)
                                 .fuzziness("AUTO")
                             )
                         )
@@ -66,12 +68,13 @@ public class SearchController {
 
             } else if (queryText.contains("between")) {
                 double[] range = extractTwoNumbers(queryText);
+                String productKeyword = extractProductKeyword(queryText, "between");
                 queryBuilder.withQuery(qb -> qb
                     .bool(b -> b
                         .must(m -> m
-                            .match(mt -> mt
-                                .field("name")
-                                .query(extractProductKeyword(queryText, "between"))
+                            .multiMatch(mm -> mm
+                                .fields("name", "categoryName")
+                                .query(productKeyword)
                                 .fuzziness("AUTO")
                             )
                         )
@@ -87,12 +90,13 @@ public class SearchController {
 
             } else if (queryText.contains("in")) {
                 double price = extractFirstNumber(queryText);
+                String productKeyword = extractProductKeyword(queryText, "in");
                 queryBuilder.withQuery(qb -> qb
                     .bool(b -> b
                         .must(m -> m
-                            .match(mt -> mt
-                                .field("name")
-                                .query(extractProductKeyword(queryText, "in"))
+                            .multiMatch(mm -> mm
+                                .fields("name", "categoryName")
+                                .query(productKeyword)
                                 .fuzziness("AUTO")
                             )
                         )
@@ -107,10 +111,10 @@ public class SearchController {
                 );
 
             } else {
-                // ✅ Normal fuzzy search
+                // Normal fuzzy multi-field search (product name + category name)
                 queryBuilder.withQuery(qb -> qb
-                    .match(m -> m
-                        .field("name")
+                    .multiMatch(mm -> mm
+                        .fields("name", "categoryName")
                         .query(queryText)
                         .fuzziness("AUTO")
                     )
@@ -120,8 +124,7 @@ public class SearchController {
             var searchQuery = queryBuilder.build();
             var searchHits = elasticsearchOperations.search(searchQuery, ProductSearch.class);
 
-            
-
+            // Return list of ProductSearch DTOs (including categoryName now)
             return searchHits.stream()
                     .map(SearchHit::getContent)
                     .map(p -> {
@@ -130,6 +133,7 @@ public class SearchController {
                         dto.setMrp(p.getMrp());
                         dto.setDiscountedPrice(p.getDiscountedPrice());
                         dto.setQuantity(p.getQuantity());
+                        dto.setCategoryName(p.getCategoryName()); // <-- include categoryName in response
                         return dto;
                     })
                     .collect(Collectors.toList());
@@ -140,13 +144,13 @@ public class SearchController {
         }
     }
 
-    // ✅ Extract first number
+    // Extract first number (e.g., "under 20000" -> 20000)
     private double extractFirstNumber(String text) {
         var matcher = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)").matcher(text);
         return matcher.find() ? Double.parseDouble(matcher.group(1)) : 0.0;
     }
 
-    // ✅ Extract two numbers
+    // Extract two numbers (e.g., "between 10000 and 20000")
     private double[] extractTwoNumbers(String text) {
         var matcher = java.util.regex.Pattern.compile("(\\d+(?:\\.\\d+)?)").matcher(text);
         double[] nums = new double[2];
@@ -158,7 +162,7 @@ public class SearchController {
         return nums;
     }
 
-    // ✅ Clean query keyword
+    // Clean query keyword (remove the operator word and numbers)
     private String extractProductKeyword(String q, String keyword) {
         return q.replace(keyword, "")
                 .replaceAll("\\d+", "")
