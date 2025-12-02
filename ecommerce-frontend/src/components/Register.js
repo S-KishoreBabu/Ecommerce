@@ -1,9 +1,11 @@
-// src/components/Register.js
 import React, { useState } from "react";
 import axios from "axios";
-import 'bootstrap/dist/css/bootstrap.min.css';
+import { useNavigate } from "react-router-dom";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 function Register() {
+  const navigate = useNavigate();
+
   // State variables for form fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
@@ -17,17 +19,27 @@ function Register() {
     e.preventDefault();
 
     try {
-      const response = await axios.post('http://localhost:8080/api/users/register', {
-        firstName,
-        lastName,
-        email,
-        password,
-        confirmPassword,
-      });
+      const response = await axios.post(
+        "http://localhost:8080/api/users/register",
+        {
+          firstName,
+          lastName,
+          email,
+          password,
+          confirmPassword,
+        }
+      );
 
-      setMessage(response.data || "Registration successful!");
+      setMessage("Registration successful! Redirecting to login...");
+
+      // redirect after 1 second
+      setTimeout(() => {
+        navigate("/login");
+      }, 1000);
     } catch (error) {
-      setMessage(error.response?.data || "Error during registration. Please try again.");
+      setMessage(
+        error.response?.data || "Error during registration. Please try again."
+      );
     }
   };
 
@@ -101,3 +113,4 @@ function Register() {
 }
 
 export default Register;
+
